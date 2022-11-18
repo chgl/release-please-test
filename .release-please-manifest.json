@@ -1,0 +1,11 @@
+{
+  "release-type": "simple",
+  "packages": {
+    "test": {
+      "release-type": "dotnet"
+    },
+    "charts/test": {
+      "release-type": "helm"
+    }
+  }
+}
