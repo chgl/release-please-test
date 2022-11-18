@@ -22,6 +22,7 @@ jobs:
           extra-files: |
             charts/test/Chart.yaml
             charts/test/values.yaml
+            test/test.csproj
           changelog-types: |
             [
               { "type": "feat", "section": "Features" },
