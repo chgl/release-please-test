@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/chgl/release-please-test/compare/v1.0.0...v1.0.1) (2022-11-19)
+
+
+### CI/CD
+
+* fixed publish ([5350584](https://github.com/chgl/release-please-test/commit/53505843990a5f332ec935dede7918f6c1329260))
+
 ## 1.0.0 (2022-11-19)
 
 
