@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.4](https://github.com/chgl/release-please-test/compare/v1.0.3...v1.0.4) (2022-11-19)
+
+
+### CI/CD
+
+* fixed permissions for publish-helm-chart ([0c1f953](https://github.com/chgl/release-please-test/commit/0c1f9532788e41371556a72ffe9b1080a3434c31))
+
 ## [1.0.3](https://github.com/chgl/release-please-test/compare/v1.0.2...v1.0.3) (2022-11-19)
 
 
