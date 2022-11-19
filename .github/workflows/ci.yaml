@@ -186,6 +186,11 @@ jobs:
     if: ${{ github.event_name == 'release' }}
     needs:
       - test-helm-chart
+    permissions:
+      # to upload chart to ghcr.io
+      packages: write
+      # to upload chart to release
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8 # tag=v3.1.0
@@ -194,8 +199,8 @@ jobs:
         uses: docker/login-action@49ed152c8eca782a232dede0303416e8f356c37b # tag=v2
         with:
           registry: ghcr.io
-          username: chgl
-          password: ${{ secrets.GHCR_HELM_REGISTRY_TOKEN }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get chart version
         id: get-chart-version
