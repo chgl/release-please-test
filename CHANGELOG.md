@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/chgl/release-please-test/compare/v1.0.2...v1.0.3) (2022-11-19)
+
+
+### CI/CD
+
+* use dedicated token to push chart ([2d73008](https://github.com/chgl/release-please-test/commit/2d73008f79e33dcd70e253c237385565f3f60191))
+
 ## [1.0.2](https://github.com/chgl/release-please-test/compare/v1.0.1...v1.0.2) (2022-11-19)
 
 
