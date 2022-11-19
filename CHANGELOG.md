@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/chgl/release-please-test/compare/v1.0.1...v1.0.2) (2022-11-19)
+
+
+### CI/CD
+
+* use helm registry login ([5e1aa22](https://github.com/chgl/release-please-test/commit/5e1aa225f1f113e613c6f77febb3d8d59d3fdee5))
+
 ## [1.0.1](https://github.com/chgl/release-please-test/compare/v1.0.0...v1.0.1) (2022-11-19)
 
 
