@@ -14,8 +14,8 @@ keywords:
   - "prometheus exporter"
 kubeVersion: ">= 1.19.0"
 # x-release-please-start-version
-appVersion: 1.0.3
-version: 1.0.3
+appVersion: 1.0.4
+version: 1.0.4
 # x-release-please-end
 
 annotations:
