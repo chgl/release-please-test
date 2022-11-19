@@ -1,0 +1,6 @@
+checks:
+  cpuRequestsMissing: ignore
+  cpuLimitsMissing: ignore
+  memoryRequestsMissing: ignore
+  memoryLimitsMissing: ignore
+  pullPolicyNotAlways: ignore
