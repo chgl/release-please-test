@@ -20,8 +20,8 @@ jobs:
           release-type: simple
           package-name: release-please-action
           extra-files: |
-            charts/test/Chart.yaml
-            charts/test/values.yaml
+            charts/fhir-server-exporter/Chart.yaml
+            charts/fhir-server-exporter/values.yaml
             test/test.csproj
           changelog-types: |
             [
