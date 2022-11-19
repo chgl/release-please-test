@@ -1,0 +1,215 @@
+name: ci
+
+on:
+  push:
+    branches: [master]
+  release:
+    types: [created]
+  pull_request:
+    branches: [master]
+
+# Declare default permissions as read only.
+permissions: read-all
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-22.04
+    permissions:
+      packages: write
+      contents: read
+      pull-requests: write
+    outputs:
+      image-tags: ${{ steps.container_meta.outputs.tags }}
+      image-version: ${{ steps.container_meta.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b # tag=v3
+        with:
+          fetch-depth: 0
+
+      - name: Container meta for image
+        id: container_meta
+        uses: docker/metadata-action@69f6fc9d46f2f8bf0d5491e4aabe0bb8c6a4678a # tag=v4
+        with:
+          images: |
+            ghcr.io/${{ github.repository }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@8b122486cedac8393e77aa9734c3528886e4a1a8 # tag=v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@dc7b9719a96d48369863986a06765841d7ea23f6 # tag=v2
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@49ed152c8eca782a232dede0303416e8f356c37b # tag=v2
+        if: ${{ github.event_name != 'pull_request' }}
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # can't use `load` and `push` at the same time, so differentiate by whether its a PR or not
+      - name: Build and push image
+        uses: docker/build-push-action@c84f38281176d4c9cdb1626ffafcd6b3911b5d94 # tag=v3
+        with:
+          load: ${{ github.event_name == 'pull_request' }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.container_meta.outputs.tags }}
+          labels: ${{ steps.container_meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@7b7aa264d83dc58691451798b4d117d53d21edfe # tag=v0.7.1
+        with:
+          image-ref: ${{ fromJson(steps.container_meta.outputs.json).tags[0] }}
+          severity: "CRITICAL,HIGH"
+          exit-code: "1"
+          ignore-unfixed: "true"
+
+      - name: Save container images as tar archives
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          IMAGE: ${{ fromJson(steps.container_meta.outputs.json).tags[0] }}
+        run: |
+          docker save "$IMAGE" -o /tmp/image.tar
+
+      - name: Upload container images
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8 # tag=v3.1.0
+        with:
+          name: container-image-artifacts
+          path: |
+            /tmp/image.tar
+
+  lint-helm-chart:
+    name: lint helm chart
+    runs-on: ubuntu-22.04
+    needs:
+      - build
+    container: ghcr.io/chgl/kube-powertools:v1.21.11@sha256:d22e73c9f41a074d402c4d1f3822c4937a1c2a03a3d9dcb01ff6d2d1ca4abb0a
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8 # tag=v3.1.0
+        with:
+          fetch-depth: 0
+
+      # - name: Check if documentation is up-to-date
+      #   run: |
+      #     generate-docs.sh
+      #     if git diff --exit-code HEAD; then
+      #       echo -e "\033[0;32mDocumentation up to date\033[0m ✔"
+      #     else
+      #       echo -e "\033[0;31mDocumentation outdated! Please run generate-docs.sh locally and push the changes.\033[0m ❌"
+      #       git diff --color
+      #       exit 1
+      #     fi
+
+      - name: Update dependencies
+        run: find charts/ ! -path charts/ -maxdepth 1 -type d -exec helm dependency update {} \;
+
+      # - name: Run chart-testing (lint)
+      #   run: ct lint --config .github/ct/ct.yaml
+
+      - name: Run Powerlint
+        env:
+          KUBERNETES_VERSIONS: "1.23.0 1.24.0 1.25.0"
+        run: chart-powerlint.sh
+
+  test-helm-chart:
+    name: test helm chart
+    runs-on: ubuntu-22.04
+    needs:
+      - build
+      - lint-helm-chart
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8 # tag=v3.1.0
+        with:
+          fetch-depth: 0
+
+      - name: Update dependencies
+        run: find charts/ ! -path charts/ -maxdepth 1 -type d -exec helm dependency update {} \;
+
+      - name: Set up chart-testing
+        uses: helm/chart-testing-action@09ed88797198755e5031f25be13da255e7e33aad # tag=v2.3.0
+
+      - name: Run chart-testing (list-changed)
+        id: list-changed
+        run: |
+          changed=$(ct list-changed)
+          if [[ -n "$changed" ]]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create k8s Kind Cluster
+        uses: helm/kind-action@d08cf6ff1575077dee99962540d77ce91c62387d # tag=v1.3.0
+        if: steps.list-changed.outputs.changed == 'true'
+        with:
+          version: v0.17.0
+          # TODO: add matrix run strategy back
+          cluster_name: kind-cluster-k8s-1.25.3
+          node_image: kindest/node:v1.25.3
+
+      # only required on a PR. If ran on master or on a release,
+      # the image is already pushed to the container registry
+      - name: Download container images
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741 # tag=v3.0.0
+        with:
+          name: container-image-artifacts
+          path: /tmp
+
+      - name: Load images into cluster
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          ls -lar /tmp
+          kind load image-archive /tmp/image.tar --name=kind-cluster-k8s-1.25.3
+
+      # if it's a PR we use the image loaded above. If it's not,
+      # then the chart version was already bumped by release-please and pushed to the registry.
+      - name: Overwrite values.yaml image tag in case of a PR
+        uses: mikefarah/yq@a6d1a52e333dcff43aca164936601ddd09bbfe94 # tag=v4.30.4
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          IMAGE_TAG: ${{ needs.build.outputs.image-version }}
+        with:
+          cmd: yq -i '.image.tag = strenv(IMAGE_TAG)' 'charts/fhir-server-exporter/values.yaml'
+
+      - name: Run chart-testing (install)
+        run: ct install --config .github/ct/install.yaml
+
+  publish-helm-chart:
+    name: publish helm chart
+    runs-on: ubuntu-22.04
+    if: ${{ github.event_name == 'release' }}
+    needs:
+      - test-helm-chart
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@49ed152c8eca782a232dede0303416e8f356c37b # tag=v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get chart version
+        id: get-chart-version
+        uses: mikefarah/yq@a6d1a52e333dcff43aca164936601ddd09bbfe94 # tag=v4.30.4
+        with:
+          cmd: yq '.version' charts/fhir-server-exporter/Chart.yaml
+
+      - name: Package chart
+        run: |
+          helm package charts/fhir-server-exporter --version ${{ steps.get-chart-version.outputs.result }}
+
+      - name: Publish chart
+        run: |
+          helm push fhir-server-exporter-${{ steps.get-chart-version.outputs.result }}.tgz oci://ghcr.io/${{ github.repository }}/charts
+
+      - name: upload chart to release
+        uses: softprops/action-gh-release@1e07f4398721186383de40550babbdf2b84acfc5 # tag=v1
+        with:
+          files: |
+            fhir-server-exporter-${{ steps.get-chart-version.outputs.result }}.tgz
