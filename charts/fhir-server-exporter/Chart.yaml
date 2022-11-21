@@ -29,4 +29,6 @@ annotations:
     # When using the list of objects option the valid supported kinds are
     # added, changed, deprecated, removed, fixed and security.
     - kind: changed
+      description: updated recruIT image tags to v1.0.4 # x-release-please-version
+    - kind: changed
       description: "standardized curl image used across charts"

@@ -23,6 +23,7 @@ jobs:
             charts/fhir-server-exporter/Chart.yaml
             charts/fhir-server-exporter/values.yaml
             test/test.csproj
+            docker-compose/docker-compose.yaml
           changelog-types: |
             [
               { "type": "feat", "section": "Features" },

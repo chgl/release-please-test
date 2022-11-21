@@ -1,0 +1,3 @@
+services:
+  fse:
+    image: ghcr.io/chgl/fhir-server-exporter:${FSE_IMAGE_TAG:v1.0.0} # x-release-please-version
