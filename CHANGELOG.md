@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.5](https://github.com/chgl/release-please-test/compare/v1.0.4...v1.0.5) (2022-12-01)
+
+
+### CI/CD
+
+* added slsa provenance to workflow ([#9](https://github.com/chgl/release-please-test/issues/9)) ([123aba3](https://github.com/chgl/release-please-test/commit/123aba3eff63d07d11b43ade86ee7b3019b039a4))
+* test docker-compose and nested Chart.yaml updates ([e0a3273](https://github.com/chgl/release-please-test/commit/e0a327391e28fc73f56eb2abf50e40193a451621))
+
 ## [1.0.4](https://github.com/chgl/release-please-test/compare/v1.0.3...v1.0.4) (2022-11-19)
 
 
