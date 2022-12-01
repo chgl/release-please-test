@@ -11,6 +11,9 @@ on:
 # Declare default permissions as read only.
 permissions: read-all
 
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+
 jobs:
   build:
     name: build
@@ -22,6 +25,8 @@ jobs:
     outputs:
       image-tags: ${{ steps.container_meta.outputs.tags }}
       image-version: ${{ steps.container_meta.outputs.version }}
+      image: ${{ steps.image.outputs.image }}
+      digest: ${{ steps.build.outputs.digest }}
     steps:
       - name: Checkout
         uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b # tag=v3
@@ -33,7 +38,7 @@ jobs:
         uses: docker/metadata-action@69f6fc9d46f2f8bf0d5491e4aabe0bb8c6a4678a # tag=v4
         with:
           images: |
-            ghcr.io/${{ github.repository }}
+            ${{ env.IMAGE_NAME }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@8b122486cedac8393e77aa9734c3528886e4a1a8 # tag=v2
@@ -51,6 +56,7 @@ jobs:
 
       # can't use `load` and `push` at the same time, so differentiate by whether its a PR or not
       - name: Build and push image
+        id: build
         uses: docker/build-push-action@c84f38281176d4c9cdb1626ffafcd6b3911b5d94 # tag=v3
         with:
           load: ${{ github.event_name == 'pull_request' }}
@@ -59,6 +65,14 @@ jobs:
           labels: ${{ steps.container_meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Output image
+        id: image
+        run: |
+          # NOTE: Set the image as an output because the `env` context is not
+          # available to the inputs of a reusable workflow call.
+          image_name="${{ env.IMAGE_NAME }}"
+          echo "image=$image_name" >> "$GITHUB_OUTPUT"
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@7b7aa264d83dc58691451798b4d117d53d21edfe # tag=v0.7.1
@@ -106,16 +120,16 @@ jobs:
       #       exit 1
       #     fi
 
-      - name: Update dependencies
-        run: find charts/ ! -path charts/ -maxdepth 1 -type d -exec helm dependency update {} \;
+      # - name: Update dependencies
+      #   run: find charts/ ! -path charts/ -maxdepth 1 -type d -exec helm dependency update {} \;
 
-      # - name: Run chart-testing (lint)
-      #   run: ct lint --config .github/ct/ct.yaml
+      # # - name: Run chart-testing (lint)
+      # #   run: ct lint --config .github/ct/ct.yaml
 
-      - name: Run Powerlint
-        env:
-          KUBERNETES_VERSIONS: "1.23.0 1.24.0 1.25.0"
-        run: chart-powerlint.sh
+      # - name: Run Powerlint
+      #   env:
+      #     KUBERNETES_VERSIONS: "1.23.0 1.24.0 1.25.0"
+      #   run: chart-powerlint.sh
 
   test-helm-chart:
     name: test helm chart
@@ -145,40 +159,41 @@ jobs:
 
       - name: Create k8s Kind Cluster
         uses: helm/kind-action@d08cf6ff1575077dee99962540d77ce91c62387d # tag=v1.3.0
-        if: steps.list-changed.outputs.changed == 'true'
+        if: ${{ steps.list-changed.outputs.changed }}
         with:
           version: v0.17.0
           # TODO: add matrix run strategy back
-          cluster_name: kind-cluster-k8s-1.25.3
+          # cluster_name: kind-cluster-k8s-1.25.3
           node_image: kindest/node:v1.25.3
 
       # only required on a PR. If ran on master or on a release,
       # the image is already pushed to the container registry
-      - name: Download container images
-        if: ${{ github.event_name == 'pull_request' }}
-        uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741 # tag=v3.0.0
-        with:
-          name: container-image-artifacts
-          path: /tmp
+      # - name: Download container images
+      #   if: ${{ github.event_name == 'pull_request' }}
+      #   uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741 # tag=v3.0.0
+      #   with:
+      #     name: container-image-artifacts
+      #     path: /tmp
 
-      - name: Load images into cluster
-        if: ${{ github.event_name == 'pull_request' }}
-        run: |
-          ls -lar /tmp
-          kind load image-archive /tmp/image.tar --name=kind-cluster-k8s-1.25.3
+      # - name: Load images into cluster
+      #   if: ${{ github.event_name == 'pull_request' }}
+      #   run: |
+      #     ls -lar /tmp
+      #     kind load image-archive /tmp/image.tar
+      #     # --name=kind-cluster-k8s-1.25.3
 
-      # if it's a PR we use the image loaded above. If it's not,
-      # then the chart version was already bumped by release-please and pushed to the registry.
-      - name: Overwrite values.yaml image tag in case of a PR
-        uses: mikefarah/yq@a6d1a52e333dcff43aca164936601ddd09bbfe94 # tag=v4.30.4
-        if: ${{ github.event_name == 'pull_request' }}
-        env:
-          IMAGE_TAG: ${{ needs.build.outputs.image-version }}
-        with:
-          cmd: yq -i '.image.tag = strenv(IMAGE_TAG)' 'charts/fhir-server-exporter/values.yaml'
+      # # if it's a PR we use the image loaded above. If it's not,
+      # # then the chart version was already bumped by release-please and pushed to the registry.
+      # - name: Overwrite values.yaml image tag in case of a PR
+      #   uses: mikefarah/yq@a6d1a52e333dcff43aca164936601ddd09bbfe94 # tag=v4.30.4
+      #   if: ${{ github.event_name == 'pull_request' }}
+      #   env:
+      #     IMAGE_TAG: ${{ needs.build.outputs.image-version }}
+      #   with:
+      #     cmd: yq -i '.image.tag = strenv(IMAGE_TAG)' 'charts/fhir-server-exporter/values.yaml'
 
-      - name: Run chart-testing (install)
-        run: ct install --config .github/ct/install.yaml
+      # - name: Run chart-testing (install)
+      #   run: ct install --config .github/ct/install.yaml
 
   publish-helm-chart:
     name: publish helm chart
@@ -191,6 +206,8 @@ jobs:
       packages: write
       # to upload chart to release
       contents: write
+    outputs:
+      hashes: ${{ steps.hash.outputs.hashes }}
     steps:
       - name: Checkout
         uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8 # tag=v3.1.0
@@ -221,3 +238,67 @@ jobs:
         with:
           files: |
             fhir-server-exporter-${{ steps.get-chart-version.outputs.result }}.tgz
+
+      - name: Generate hashes
+        shell: bash
+        id: hash
+        run: |
+          # sha256sum generates sha256 hash for all artifacts.
+          # base64 -w0 encodes to base64 and outputs on a single line.
+          # sha256sum artifact1 artifact2 ... | base64 -w0
+          echo "hashes=$(sha256sum fhir-server-exporter-${{ steps.get-chart-version.outputs.result }}.tgz | base64 -w0)" >> "$GITHUB_OUTPUT"
+
+  container-provenance:
+    needs:
+      - build
+    permissions:
+      actions: read # for detecting the Github Actions environment.
+      id-token: write # for creating OIDC tokens for signing.
+      packages: write # for uploading attestations.
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    # TODO(https://github.com/slsa-framework/slsa-github-generator/issues/492): Use a tagged release once we have one.
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v1.4.0-rc.2
+    with:
+      image: ${{ needs.build.outputs.tag }}
+      digest: ${{ needs.build.outputs.digest }}
+      registry-username: ${{ github.actor }}
+      # TODO(https://github.com/slsa-framework/slsa-github-generator/issues/492): Remove after GA release.
+      compile-generator: true
+    secrets:
+      registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+  helm-provenance:
+    needs:
+      - publish-helm-chart
+    permissions:
+      actions: read # Needed for detection of GitHub Actions environment.
+      id-token: write # Needed for provenance signing and ID
+      contents: write # Needed for release uploads
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.4.0-rc.2
+    with:
+      base64-subjects: "${{ needs.publish-helm-chart.outputs.hashes }}"
+      upload-assets: true
+
+  # This step uploads our artifacts to the tagged GitHub release.
+  # add-provenance-to-release:
+  #   needs:
+  #     - helm-provenance
+  #   runs-on: ubuntu-22.04
+  #   if: ${{ startsWith(github.ref, 'refs/tags/') }}
+  #   steps:
+  #     - name: Download artifact1
+  #       uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741 # tag=v2.1.0
+  #       with:
+  #         name: artifact1
+
+  #     - name: Download artifact2
+  #       uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741 # tag=v2.1.0
+  #       with:
+  #         name: artifact2
+
+  #     - name: Upload assets
+  #       uses: softprops/action-gh-release@1e07f4398721186383de40550babbdf2b84acfc5 # v0.1.14
+  #       with:
+  #         files: |
+  #           artifact1
+  #           artifact2
