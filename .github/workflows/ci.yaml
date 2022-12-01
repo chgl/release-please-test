@@ -259,7 +259,7 @@ jobs:
     # TODO(https://github.com/slsa-framework/slsa-github-generator/issues/492): Use a tagged release once we have one.
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v1.4.0-rc.2
     with:
-      image: ${{ needs.build.outputs.tag }}
+      image: ${{ needs.build.outputs.image }}
       digest: ${{ needs.build.outputs.digest }}
       registry-username: ${{ github.actor }}
       # TODO(https://github.com/slsa-framework/slsa-github-generator/issues/492): Remove after GA release.
