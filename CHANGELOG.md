@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.7](https://github.com/chgl/release-please-test/compare/v1.0.6...v1.0.7) (2022-12-03)
+
+
+### CI/CD
+
+* pin to release ([06d213b](https://github.com/chgl/release-please-test/commit/06d213b309ab6f032643cf53f59774424b917958))
+
 ## [1.0.5](https://github.com/chgl/release-please-test/compare/v1.0.4...v1.0.5) (2022-12-01)
 
 
