@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.8](https://github.com/chgl/release-please-test/compare/v1.0.7...v1.0.8) (2022-12-03)
+
+
+### CI/CD
+
+* fix container provenance ([90e66c2](https://github.com/chgl/release-please-test/commit/90e66c28e7e5160151a555850b04705286c2434d))
+
 ## [1.0.7](https://github.com/chgl/release-please-test/compare/v1.0.6...v1.0.7) (2022-12-03)
 
 
