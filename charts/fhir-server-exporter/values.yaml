@@ -27,7 +27,7 @@ replicaCount: 1
 image: # +doc-gen:ignore
   registry: ghcr.io
   repository: chgl/release-please-test
-  tag: v1.0.5 # x-release-please-version
+  tag: v1.0.7 # x-release-please-version
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
