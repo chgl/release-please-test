@@ -14,8 +14,8 @@ keywords:
   - "prometheus exporter"
 kubeVersion: ">= 1.19.0"
 # x-release-please-start-version
-appVersion: 1.0.7
-version: 1.0.7
+appVersion: 1.0.8
+version: 1.0.8
 # x-release-please-end
 
 annotations:
@@ -29,6 +29,6 @@ annotations:
     # When using the list of objects option the valid supported kinds are
     # added, changed, deprecated, removed, fixed and security.
     - kind: changed
-      description: updated recruIT image tags to v1.0.7 # x-release-please-version
+      description: updated recruIT image tags to v1.0.8 # x-release-please-version
     - kind: changed
       description: "standardized curl image used across charts"
